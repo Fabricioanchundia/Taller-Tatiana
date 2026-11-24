@@ -1,0 +1,28 @@
+# Copie este archivo como application.yml (o use variables de entorno)
+# y reemplace los valores entre < >.
+
+server:
+  port: 8080
+
+spring:
+  datasource:
+    # SQL Server local con autenticación SQL:
+    url: jdbc:sqlserver://localhost:1433;databaseName=Comisariato;encrypt=true;trustServerCertificate=true
+    # Instancia con nombre (SQLEXPRESS):
+    # url: jdbc:sqlserver://localhost\\SQLEXPRESS;databaseName=Comisariato;encrypt=true;trustServerCertificate=true
+    username: <usuario>
+    password: <contraseña>
+    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: always

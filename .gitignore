@@ -1,0 +1,23 @@
+# ---- Java / Maven ----
+java-api/target/
+*.class
+*.log
+.idea/
+*.iml
+.vscode/
+
+# ---- .NET ----
+dotnet-api/bin/
+dotnet-api/obj/
+*.user
+*.suo
+.vs/
+
+# ---- Secretos locales (nunca subir credenciales reales) ----
+.env
+appsettings.Local.json
+application-local.yml
+
+# ---- Sistema ----
+.DS_Store
+Thumbs.db

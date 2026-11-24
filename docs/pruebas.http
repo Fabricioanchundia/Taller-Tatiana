@@ -1,0 +1,99 @@
+### ============================================================
+### Pruebas de los 5 endpoints (Visual Studio / VS Code REST Client / IntelliJ HTTP Client)
+### Cambie @host según la API que esté probando:
+###   Java  -> http://localhost:8080
+###   .NET  -> http://localhost:5080
+### Ejecute en orden sobre una base recién instalada (scripts 01 y 02).
+### ============================================================
+@host = http://localhost:8080
+# Prefijo de factura: use 0000001 para Java y 0000002 para .NET, así las dos
+# APIs pueden probarse sobre la misma base sin chocar con 409.
+@fac = 001-001-0000001
+# Id devuelto por la prueba 1.a (cámbielo si su base ya tenía ventas)
+@ventaId = 1
+
+### 1.a  Registrar venta -> 201 Created
+POST {{host}}/api/ventas
+Content-Type: application/json
+
+{
+  "numeroFactura": "{{fac}}01",
+  "clienteId": 1,
+  "empleadoId": 1,
+  "formaPago": "Efectivo",
+  "detalles": [
+    { "productoId": 1, "cantidad": 2 },
+    { "productoId": 3, "cantidad": 1, "descuento": 0.20 }
+  ]
+}
+
+### 1.b  Misma factura -> 409 Conflict
+POST {{host}}/api/ventas
+Content-Type: application/json
+
+{
+  "numeroFactura": "{{fac}}01",
+  "empleadoId": 1,
+  "formaPago": "Efectivo",
+  "detalles": [ { "productoId": 1, "cantidad": 1 } ]
+}
+
+### 1.c  Falta numeroFactura y detalles -> 400 Bad Request
+POST {{host}}/api/ventas
+Content-Type: application/json
+
+{
+  "empleadoId": 1,
+  "formaPago": "Efectivo"
+}
+
+### 1.d  Stock insuficiente -> 422 Unprocessable Entity
+POST {{host}}/api/ventas
+Content-Type: application/json
+
+{
+  "numeroFactura": "{{fac}}02",
+  "empleadoId": 1,
+  "formaPago": "Tarjeta",
+  "detalles": [ { "productoId": 4, "cantidad": 9999 } ]
+}
+
+### 1.e  Venta que deja el Detergente (30 u., mínimo 10) en stock bajo -> 201
+POST {{host}}/api/ventas
+Content-Type: application/json
+
+{
+  "numeroFactura": "{{fac}}03",
+  "clienteId": 2,
+  "empleadoId": 1,
+  "formaPago": "Transferencia",
+  "detalles": [ { "productoId": 4, "cantidad": 25 } ]
+}
+
+### 2.a  Anular venta -> 200 OK
+POST {{host}}/api/ventas/{{ventaId}}/anular?empleadoId=3
+
+### 2.b  Anular otra vez -> 409 Conflict
+POST {{host}}/api/ventas/{{ventaId}}/anular
+
+### 2.c  Venta inexistente -> 404 Not Found
+POST {{host}}/api/ventas/99999/anular
+
+### 3.   Productos con stock bajo -> 200 (debe aparecer el Detergente)
+GET {{host}}/api/productos/stock-bajo
+
+### 4.a  Ventas del empleado 1 -> 200 con datos
+GET {{host}}/api/empleados/1/ventas
+
+### 4.b  Empleado 2 existe pero no tiene ventas -> 200 con []
+GET {{host}}/api/empleados/2/ventas
+
+### 4.c  Empleado inexistente -> 404
+GET {{host}}/api/empleados/999/ventas
+
+### 5.   Movimientos del producto 1 -> 200 (salida de la venta 1 y entrada por la anulación)
+GET {{host}}/api/productos/1/movimientos
+
+### Health check
+# Java: {{host}}/actuator/health   ·   .NET: {{host}}/health
+GET {{host}}/actuator/health

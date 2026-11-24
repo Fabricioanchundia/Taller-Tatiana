@@ -1,0 +1,48 @@
+# Configuración de la API Java.
+# Las credenciales NO se escriben aquí: se leen de variables de entorno.
+#   DB_URL       (opcional) cadena JDBC
+#   DB_USER      usuario de SQL Server
+#   DB_PASSWORD  contraseña de SQL Server
+# Vea application.yml.example para un ejemplo completo.
+
+server:
+  port: ${PORT:8080}
+
+spring:
+  application:
+    name: comisariato-api-java
+  datasource:
+    url: ${DB_URL:jdbc:sqlserver://localhost:1433;databaseName=Comisariato;encrypt=true;trustServerCertificate=true}
+    username: ${DB_USER:sa}
+    password: ${DB_PASSWORD:}
+    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
+    hikari:
+      pool-name: ComisariatoPool
+      maximum-pool-size: 10
+      connection-timeout: 10000
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+  api-docs:
+    path: /v3/api-docs
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    root: INFO
+    edu.comisariato.api: INFO
+    # Descomente para ver el SQL que ejecuta JdbcTemplate:
+    # org.springframework.jdbc.core: DEBUG

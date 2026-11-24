@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Comisariato · Menú de operaciones</title>
+<style>
+  :root { --bg:#f6f7f9; --card:#fff; --ink:#1d2430; --muted:#5b6675; --line:#dde2e8; --accent:#1f5fae; --ok:#1d7a46; --err:#b3261e; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background:var(--bg); color:var(--ink); }
+  header { padding:20px 24px; background:var(--card); border-bottom:1px solid var(--line); display:flex; gap:16px; align-items:baseline; flex-wrap:wrap; }
+  header h1 { margin:0; font-size:20px; }
+  header span { color:var(--muted); font-size:14px; }
+  header a { color:var(--accent); font-size:14px; }
+  main { display:grid; grid-template-columns: minmax(320px, 520px) 1fr; gap:20px; padding:20px 24px; }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+  details { background:var(--card); border:1px solid var(--line); border-radius:8px; margin-bottom:12px; }
+  summary { cursor:pointer; padding:12px 16px; font-weight:600; }
+  summary code { font-weight:400; color:var(--muted); font-size:13px; }
+  .body { padding:0 16px 16px; }
+  label { display:block; font-size:13px; color:var(--muted); margin:10px 0 4px; }
+  input, select { width:100%; padding:8px; border:1px solid var(--line); border-radius:6px; font-size:14px; }
+  .row { display:grid; grid-template-columns: 1fr 1fr 1fr auto; gap:6px; align-items:end; margin-top:6px; }
+  button { margin-top:12px; padding:8px 14px; border:0; border-radius:6px; background:var(--accent); color:#fff; font-size:14px; cursor:pointer; }
+  button.sec { background:#e8edf4; color:var(--ink); }
+  button.del { background:transparent; color:var(--err); margin:0; padding:8px; }
+  #salida { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:16px; position:sticky; top:20px; align-self:start; }
+  #estado { font-weight:600; margin-bottom:8px; }
+  .ok { color:var(--ok); } .err { color:var(--err); }
+  pre { margin:0; white-space:pre-wrap; word-break:break-word; font-size:13px; max-height:70vh; overflow:auto; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Comisariato · Menú de operaciones</h1>
+  <span id="api"></span>
+  <a href="#" id="swagger" target="_blank">Swagger</a>
+  <a href="#" id="health" target="_blank">Health</a>
+</header>
+
+<main>
+<section>
+  <details open>
+    <summary>1. Registrar venta <code>POST /api/ventas</code></summary>
+    <div class="body">
+      <label>Número de factura</label>
+      <input id="factura" placeholder="001-001-000000101">
+      <label>Cliente ID (vacío = consumidor final)</label>
+      <input id="cliente" type="number" min="1">
+      <label>Empleado ID</label>
+      <input id="empleado" type="number" min="1" value="1">
+      <label>Forma de pago</label>
+      <select id="formaPago"><option>Efectivo</option><option>Tarjeta</option><option>Transferencia</option></select>
+      <label>Detalle (producto ID · cantidad · descuento $)</label>
+      <div id="lineas"></div>
+      <button class="sec" type="button" onclick="agregarLinea()">+ Agregar línea</button>
+      <button type="button" onclick="registrarVenta()">Registrar venta</button>
+    </div>
+  </details>
+
+  <details>
+    <summary>2. Anular venta <code>POST /api/ventas/{id}/anular</code></summary>
+    <div class="body">
+      <label>Venta ID</label><input id="ventaAnular" type="number" min="1">
+      <label>Empleado que anula (opcional)</label><input id="empleadoAnula" type="number" min="1">
+      <button type="button" onclick="anularVenta()">Anular venta</button>
+    </div>
+  </details>
+
+  <details>
+    <summary>3. Productos con stock bajo <code>GET /api/productos/stock-bajo</code></summary>
+    <div class="body"><button type="button" onclick="llamar('GET', '/api/productos/stock-bajo')">Consultar</button></div>
+  </details>
+
+  <details>
+    <summary>4. Ventas por empleado <code>GET /api/empleados/{id}/ventas</code></summary>
+    <div class="body">
+      <label>Empleado ID</label><input id="empleadoVentas" type="number" min="1" value="1">
+      <button type="button" onclick="llamar('GET', '/api/empleados/' + val('empleadoVentas') + '/ventas')">Consultar</button>
+    </div>
+  </details>
+
+  <details>
+    <summary>5. Movimientos por producto <code>GET /api/productos/{id}/movimientos</code></summary>
+    <div class="body">
+      <label>Producto ID</label><input id="productoMov" type="number" min="1" value="1">
+      <button type="button" onclick="llamar('GET', '/api/productos/' + val('productoMov') + '/movimientos')">Consultar</button>
+    </div>
+  </details>
+</section>
+
+<section id="salida">
+  <div id="estado">Seleccione una operación.</div>
+  <pre id="respuesta"></pre>
+</section>
+</main>
+
+<script>
+  // Mismo menú para la API Java (puerto 8080) y la API .NET (puerto 5080):
+  // usa rutas relativas, así funciona en cualquiera de las dos.
+  const esJava = location.port === '8080';
+  document.getElementById('api').textContent = 'Servidor: ' + location.origin;
+  document.getElementById('swagger').href = esJava ? '/swagger-ui.html' : '/swagger';
+  document.getElementById('health').href = esJava ? '/actuator/health' : '/health';
+
+  const val = id => document.getElementById(id).value.trim();
+
+  function agregarLinea(productoId = '', cantidad = 1, descuento = 0) {
+    const div = document.createElement('div');
+    div.className = 'row';
+    div.innerHTML =
+      '<input type="number" min="1" placeholder="Producto ID" value="' + productoId + '">' +
+      '<input type="number" min="1" placeholder="Cantidad" value="' + cantidad + '">' +
+      '<input type="number" min="0" step="0.01" placeholder="Descuento" value="' + descuento + '">' +
+      '<button class="del" type="button" title="Quitar">✕</button>';
+    div.querySelector('button').onclick = () => div.remove();
+    document.getElementById('lineas').appendChild(div);
+  }
+
+  function registrarVenta() {
+    const detalles = [...document.querySelectorAll('#lineas .row')].map(r => {
+      const [p, c, d] = r.querySelectorAll('input');
+      return { productoId: p.value ? Number(p.value) : null,
+               cantidad:   c.value ? Number(c.value) : null,
+               descuento:  d.value ? Number(d.value) : 0 };
+    });
+    const body = {
+      numeroFactura: val('factura') || null,
+      clienteId: val('cliente') ? Number(val('cliente')) : null,
+      empleadoId: val('empleado') ? Number(val('empleado')) : null,
+      formaPago: val('formaPago'),
+      detalles
+    };
+    llamar('POST', '/api/ventas', body);
+  }
+
+  function anularVenta() {
+    const emp = val('empleadoAnula');
+    llamar('POST', '/api/ventas/' + val('ventaAnular') + '/anular' + (emp ? '?empleadoId=' + emp : ''));
+  }
+
+  async function llamar(metodo, url, body) {
+    const estado = document.getElementById('estado');
+    const salida = document.getElementById('respuesta');
+    estado.textContent = metodo + ' ' + url + ' …';
+    estado.className = '';
+    salida.textContent = body ? 'Petición:\n' + JSON.stringify(body, null, 2) : '';
+    try {
+      const resp = await fetch(url, {
+        method: metodo,
+        headers: body ? { 'Content-Type': 'application/json' } : {},
+        body: body ? JSON.stringify(body) : undefined
+      });
+      const texto = await resp.text();
+      let contenido = texto;
+      try { contenido = JSON.stringify(JSON.parse(texto), null, 2); } catch (_) {}
+      estado.textContent = metodo + ' ' + url + ' → ' + resp.status + ' ' + resp.statusText;
+      estado.className = resp.ok ? 'ok' : 'err';
+      salida.textContent = contenido || '(sin contenido)';
+    } catch (e) {
+      estado.textContent = 'No se pudo contactar al servidor';
+      estado.className = 'err';
+      salida.textContent = String(e);
+    }
+  }
+
+  // Factura sugerida única y dos líneas de ejemplo
+  document.getElementById('factura').value =
+    '001-001-' + String(Date.now()).slice(-9);
+  agregarLinea(1, 2, 0);
+  agregarLinea(3, 1, 0);
+</script>
+</body>
+</html>

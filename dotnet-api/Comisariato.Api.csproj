@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Comisariato.Api</RootNamespace>
+    <AssemblyName>Comisariato.Api</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- ADO.NET (obligatorio, sin Entity Framework) -->
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="5.2.2" />
+    <!-- Reintento ante deadlock: Policy.Handle<...>().WaitAndRetryAsync(...) -->
+    <PackageReference Include="Polly" Version="7.2.4" />
+    <!-- Swagger UI en /swagger -->
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.9.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- El archivo de ejemplo no se publica junto con la aplicación -->
+    <Content Update="appsettings.example.json" CopyToPublishDirectory="Never" CopyToOutputDirectory="Never" />
+  </ItemGroup>
+
+</Project>
